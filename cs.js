@@ -24,10 +24,8 @@
 (function() {
     'use strict';
 
-    // 登录页面URL
     const LOGIN_URL = "https://ysc.teamsync.cn/login?redirect=%2Findex";
 
-    // 调试日志函数
     const log = (message, data) => {
         const timestamp = new Date().toISOString().slice(11, 23);
         if (data) {
@@ -37,20 +35,16 @@
         }
     };
 
-    // 初始化本地存储（包括商品和出证记录）
     const initStorages = () => {
-        // 初始化商品存储
         if (!localStorage.getItem('multiPlatformProducts')) {
             localStorage.setItem('multiPlatformProducts', JSON.stringify([]));
         }
 
-        // 初始化出证记录存储
         if (!localStorage.getItem('certificationRecords')) {
             localStorage.setItem('certificationRecords', JSON.stringify([]));
         }
     };
 
-    // 识别平台信息
     const getPlatformInfo = (url) => {
         if (url.includes('tmall.com')) {
             return '天猫';
@@ -66,11 +60,9 @@
         return '未知平台';
     };
 
-    // 获取并设置Admin-Token
     const handleAdminToken = () => {
         log("开始获取Admin-Token...");
 
-        // 从cookie中获取Admin-Token
         const cookies = document.cookie.split(';');
         let adminToken = null;
 
@@ -87,12 +79,9 @@
         }
 
         if (adminToken) {
-            // 使用GM_setValue替代localStorage，避免跨域问题
             try {
                 GM_setValue('yscAdminToken', adminToken);
                 log("已使用GM_setValue保存Admin-Token");
-
-                // 验证保存是否成功
                 const savedToken = GM_getValue('yscAdminToken');
                 if (savedToken) {
                     showToast(`已获取并保存Admin-Token`, 'success');
@@ -115,18 +104,13 @@
             showToast('未找到Admin-Token，请确保已登录ysc.teamsync.cn', 'error');
         }
     };
-
-    // 检查Admin-Token是否存在
     const checkAdminToken = () => {
         try {
-            // 先尝试从GM存储获取
             const tokenFromGM = GM_getValue('yscAdminToken');
             if (tokenFromGM) {
                 log("从GM存储中找到Admin-Token");
                 return tokenFromGM;
             }
-
-            // 再尝试从localStorage获取
             const tokenFromLS = localStorage.getItem('yscAdminToken');
             if (tokenFromLS) {
                 log("从localStorage中找到Admin-Token");
@@ -140,8 +124,6 @@
             return null;
         }
     };
-
-    // 保存出证记录到本地存储
     const saveCertificationRecord = (productData, responseData, isSuccess) => {
         const records = JSON.parse(localStorage.getItem('certificationRecords'));
 
@@ -161,38 +143,29 @@
         log(`已保存出证记录 #${newRecord.id}: ${newRecord.productName}`);
         return newRecord;
     };
-
-    // 获取所有出证记录
     const getAllCertificationRecords = () => {
         initStorages();
         return JSON.parse(localStorage.getItem('certificationRecords'));
     };
-
-    // 跳转到登录页面
     const redirectToLogin = () => {
         window.open(LOGIN_URL, '_blank');
         showToast('已打开登录页面，请登录后获取新的Token', 'info');
     };
-
-    // 发送出证请求
     const sendCertificationRequest = (productData) => {
-        // API地址和从存储获取Authorization
         const certificationUrl = "https://ysc.teamsync.cn/prod-api/system/ecTaskYingGood";
         const adminToken = checkAdminToken();
 
         if (!adminToken) {
             const errorMsg = '未找到Admin-Token，请先在认证平台页面获取';
             log(errorMsg);
-            showToast(errorMsg, 'error', true); // 显示登录按钮
+            showToast(errorMsg, 'error', true); 
             return Promise.reject(new Error(errorMsg));
         }
 
         log("使用Admin-Token前10位:", adminToken.substring(0, 10) + "...");
         const authorizationToken = `Bearer ${adminToken}`;
-
-        // 构建请求体结构
         const certificationData = {
-            taskYingId: 1, // 固定值1
+            taskYingId: 1, 
             detailUrl: productData.productUrl,
             shopName: productData.shopName || '商品名称',
             title: productData.productName,
@@ -213,12 +186,9 @@
         })
         .then(response => {
             log(`出证请求响应状态: ${response.status} ${response.statusText}`);
-
-            // 处理401未授权错误
             if (response.status === 401) {
                 hideLoadingToast();
                 showToast('认证已过期，请重新登录获取Token', 'error', true);
-                // 清除无效的Token
                 try {
                     GM_deleteValue('yscAdminToken');
                     localStorage.removeItem('yscAdminToken');
@@ -227,13 +197,9 @@
                 }
                 return Promise.reject(new Error('认证已过期，请重新登录'));
             }
-
-            // 获取原始文本响应以便调试
             return response.text().then(text => {
                 hideLoadingToast();
                 log("出证请求原始响应:", text);
-
-                // 尝试解析为JSON
                 try {
                     const jsonResponse = JSON.parse(text);
                     return {
@@ -243,7 +209,6 @@
                     };
                 } catch (e) {
                     log("响应解析为JSON失败:", e);
-                    // 如果不是JSON，返回原始文本
                     return {
                         status: response.status,
                         data: null,
@@ -254,21 +219,16 @@
             });
         })
         .then(result => {
-            // 根据响应结果进行不同处理
             let isSuccess = false;
             let message = '';
 
-            // 处理JSON响应
             if (result.data) {
-                // 检查常见的成功状态码
                 if (result.status === 200) {
-                    // 检查响应中的成功标识
                     if (result.data.code === 200 || result.data.success) {
                         isSuccess = true;
                         message = '出证请求提交成功';
                         showToast(message, 'success');
                     } else {
-                        // 处理业务错误
                         message = result.data.msg || `出证失败 (业务码: ${result.data.code})`;
                         showToast(message, 'error');
                     }
@@ -277,15 +237,11 @@
                     showToast(message, 'error');
                 }
             } else {
-                // 处理非JSON响应
                 message = `请求失败: 无法解析服务器响应 - ${result.parseError || '未知错误'}`;
                 showToast(message, 'error');
             }
 
-            // 保存出证记录
             saveCertificationRecord(productData, result, isSuccess);
-
-            // 更新UI状态
             updateCertificationStatus(productData.productUrl);
 
             return {
@@ -298,7 +254,6 @@
             hideLoadingToast();
             const errorMsg = `出证请求错误: ${error.message}`;
             log(errorMsg);
-            // 如果是认证错误，显示登录按钮
             if (error.message.includes('认证已过期') || error.message.includes('未找到Admin-Token')) {
                 showToast(errorMsg, 'error', true);
             } else {
@@ -308,7 +263,6 @@
         });
     };
 
-    // 保存商品信息到本地存储并支持出证
     const saveProductInfo = (data, sendCert = false) => {
         initStorages();
         const products = JSON.parse(localStorage.getItem('multiPlatformProducts'));
@@ -323,7 +277,6 @@
             addTime: new Date().toLocaleString()
         };
 
-        // 去重检查
         const isDuplicate = products.some(p => p.productUrl === newProduct.productUrl);
         if (!isDuplicate) {
             products.push(newProduct);
@@ -331,7 +284,6 @@
             log(`已保存商品 #${newProduct.id}: ${newProduct.productName} (${newProduct.platform})`);
             showToast(`已保存${newProduct.platform}商品信息`, 'success');
 
-            // 如果需要发送出证请求
             if (sendCert) {
                 sendCertificationRequest(newProduct)
                     .then(response => {
@@ -349,14 +301,11 @@
         return { success: false, product: null };
     };
 
-    // 更新出证状态显示
     const updateCertificationStatus = (productUrl) => {
-        // 更新弹窗中的按钮状态
         const popup = document.getElementById('productInfoPopup');
         if (popup) {
             const certifyBtn = popup.querySelector('#certifyProduct');
             if (certifyBtn) {
-                // 检查是否已出证
                 const isCertified = hasProductBeenCertified(productUrl);
                 if (isCertified) {
                     certifyBtn.textContent = '已出证';
@@ -368,21 +317,17 @@
             }
         }
 
-        // 更新商品列表中的按钮状态
         const listModal = document.getElementById('productListModal');
         if (listModal) {
             listModal.remove();
-            showProductList(); // 刷新列表
+            showProductList(); 
         }
     };
-
-    // 检查商品是否已出证
     const hasProductBeenCertified = (productUrl) => {
         const records = getAllCertificationRecords();
         return records.some(record => record.productUrl === productUrl && record.isSuccess);
     };
 
-    // 等待元素加载的工具函数
     const waitForElement = (selector, timeout = 5000, interval = 300) => {
         return new Promise((resolve, reject) => {
             const startTime = Date.now();
@@ -406,9 +351,7 @@
         });
     };
 
-    // 商品名称提取
     const extractProductName = async (url, platform) => {
-        // 1. 优先从页面标题提取
         if (document.title && document.title.trim() !== '') {
             if (platform === '拼多多') {
                 const title = document.title.trim();
@@ -421,7 +364,6 @@
                     return hyphenMatch;
                 }
             } else if (platform === '京东') {
-                // 京东标题"商品名_京东"
                 const title = document.title.trim();
                 const jdMatch = title.split('_京东')[0].trim();
                 if (jdMatch && jdMatch.length > 5) {
@@ -431,8 +373,6 @@
                 return document.title.split('-')[0].trim();
             }
         }
-
-        // 2. 从页面元素提取（按平台处理）
         if (platform === '拼多多') {
             const productNameSelectors = [
                 "span[class*='enable-select']",
@@ -464,14 +404,13 @@
                 }
             }
         } else if (platform === '京东') {
-            // 京东商品名称选择器
             const productNameSelectors = [
-                ".sku-name",                   // 京东商品名称核心选择器
-                "#product-name",               // 商品名称ID
-                ".item-name",                  // 商品名称类
-                "h1[class*='product-title']",  // 标题标签
-                "[class*='main-title']",       // 主标题
-                "[id*='productName']"          // 含商品名的ID
+                ".sku-name",                   
+                "#product-name",              
+                ".item-name",                  
+                "h1[class*='product-title']",  
+                "[class*='main-title']",       
+                "[id*='productName']"          
             ];
 
             for (const selector of productNameSelectors) {
@@ -492,7 +431,6 @@
                 }
             }
         } else {
-            // 淘宝/天猫处理
             const productNameSelectors = [
                 "h1[class*='title']",
                 ".tb-main-title",
@@ -509,19 +447,16 @@
                         return productName;
                     }
                 } catch (err) {
-                    // 忽略错误，继续尝试其他选择器
                 }
             }
         }
 
-        // 3. 从URL参数提取
         const urlObj = new URL(url);
         const params = new URLSearchParams(urlObj.search);
 
         if (platform === '拼多多' && params.get('goods_id')) {
             return `拼多多商品 ${params.get('goods_id')}`;
         } else if (platform === '京东') {
-            // 京东URL商品ID
             if (url.match(/item\.jd\.com\/(\d+)\.html/)) {
                 return `京东商品 ${url.match(/item\.jd\.com\/(\d+)\.html/)[1]}`;
             }
@@ -529,7 +464,6 @@
             return decodeURIComponent(params.get('title')).slice(0, 50);
         }
 
-        // 4. 最后的尝试 - 扫描价格附近元素
         if (['拼多多', '京东'].includes(platform)) {
             try {
                 const priceElements = document.querySelectorAll("[class*='price'], [id*='price']");
@@ -559,7 +493,6 @@
         return `未识别商品名称 (${new Date().getTime().toString().slice(-4)})`;
     };
 
-    // 获取商品销量信息
     const getSalesCount = (platform) => {
         let selectors;
         let salesPattern;
@@ -575,18 +508,17 @@
             ];
             salesPattern = /(已售|销量|售)\s*([\d.]+[万]+[\+]?)/;
         } else if (platform === '京东') {
-            // 京东销量选择器
             selectors = [
-                ".sales-amount",               // 京东销量核心选择器
-                "[class*='sell-count']",       // 销售数量
-                "[id*='comment-count']",       // 评论数（作为销量参考）
-                "[class*='item-comment']",     // 评论区域
-                ".count"                       // 计数元素
+                ".sales-amount",               
+                "[class*='sell-count']",       
+                "[id*='comment-count']",      
+                "[class*='item-comment']",     
+                ".count"                       
             ];
-            // 京东销量模式：通常包含"已售"、"销量"、"评价"等关键词
+          
             salesPattern = /(已售|销量|评价)\s*([\d.]+[万]+[\+]?)/;
         } else {
-            // 淘宝/天猫销量选择器
+           
             selectors = [
                 "div[class*='salesDesc']",
                 ".tm-count",
@@ -598,7 +530,7 @@
             salesPattern = /(已售|销量|月销)\s*([\d.]+[万]+[\+]?)/;
         }
 
-        // 尝试通过选择器获取
+      
         for (const selector of selectors) {
             const element = document.querySelector(selector);
             if (element) {
@@ -614,7 +546,7 @@
             }
         }
 
-        // 延迟重试
+      
         return new Promise(resolve => {
             setTimeout(() => {
                 for (const selector of selectors) {
@@ -640,7 +572,7 @@
         });
     };
 
-    // 获取店铺名称
+ 
     const getShopName = (platform) => {
         let selectors;
 
@@ -657,17 +589,17 @@
                 "[class*='merchant-name']"
             ];
         } else if (platform === '京东') {
-            // 京东店铺名称选择器
+         
             selectors = [
                 "div[class='name']",
-                ".shop-name",                  // 京东店铺名称核心选择器
-                ".J-hove-wrap",                // 店铺链接容器
-                "[class*='seller-name']",      // 卖家名称
-                "[id*='shopInfoLink']",        // 店铺信息链接
-                ".shop-title"                  // 店铺标题
+                ".shop-name",                  
+                ".J-hove-wrap",                
+                "[class*='seller-name']",      
+                "[id*='shopInfoLink']",        
+                ".shop-title"                 
             ];
         } else {
-            // 淘宝/天猫店铺名称选择器
+            
             selectors = [
                 "span[class*='shopName']",
                 "a[class*='shopName']",
@@ -688,7 +620,7 @@
             }
         }
 
-        // 延迟重试
+       
         return new Promise(resolve => {
             setTimeout(() => {
                 for (const selector of selectors) {
@@ -708,13 +640,13 @@
         });
     };
 
-    // 从本地存储获取所有商品信息
+    
     const getAllProducts = () => {
         initStorages();
         return JSON.parse(localStorage.getItem('multiPlatformProducts'));
     };
 
-    // 清空本地存储的商品信息
+    
     const clearProductStorage = () => {
         if (confirm('确定要清空所有已保存的商品信息吗？')) {
             localStorage.setItem('multiPlatformProducts', JSON.stringify([]));
@@ -723,7 +655,7 @@
         }
     };
 
-    // 清空出证记录
+   
     const clearCertificationRecords = () => {
         if (confirm('确定要清空所有出证记录吗？')) {
             localStorage.setItem('certificationRecords', JSON.stringify([]));
@@ -732,7 +664,7 @@
         }
     };
 
-    // 生成XLSX文件并下载
+   
     const exportToXLSX = () => {
         const products = getAllProducts();
         if (products.length === 0) {
@@ -763,13 +695,13 @@
         const ws = XLSX.utils.aoa_to_sheet(wsData);
 
         const wscols = [
-            {wch: 6},   // 序号
-            {wch: 8},   // 平台
-            {wch: 30},  // 商品名称
-            {wch: 20},  // 店铺名称
-            {wch: 10},  // 销量
-            {wch: 50},  // 商品链接
-            {wch: 20}   // 添加时间
+            {wch: 6},   
+            {wch: 8},  
+            {wch: 30},  
+            {wch: 20}, 
+            {wch: 10},  
+            {wch: 50},  
+            {wch: 20}   
         ];
         ws['!cols'] = wscols;
 
@@ -783,7 +715,6 @@
         }, 500);
     };
 
-    // 显示/隐藏加载提示
     const showLoadingToast = (message) => {
         hideLoadingToast();
         const toast = document.createElement('div');
@@ -809,16 +740,16 @@
         if (toast) toast.remove();
     };
 
-    // 显示提示消息
+
     const showToast = (message, type = 'info', showLoginButton = false) => {
-        // 移除已存在的toast
+        
         const existingToast = document.querySelector('.message-toast');
         if (existingToast) existingToast.remove();
 
         const toast = document.createElement('div');
         toast.className = 'message-toast';
 
-        // 根据类型设置不同背景色
+
         let bgColor;
         switch(type) {
             case 'success':
@@ -851,7 +782,7 @@
             gap: 10px;
         `;
 
-        // 如果需要显示登录按钮
+ 
         if (showLoginButton) {
             toast.innerHTML = `
                 <span>${message}</span>
@@ -872,21 +803,20 @@
 
         document.body.appendChild(toast);
 
-        // 为登录按钮添加点击事件
+
         if (showLoginButton) {
             document.getElementById('toastLoginBtn').addEventListener('click', () => {
                 redirectToLogin();
                 toast.remove();
             });
         } else {
-            // 3秒后自动消失
+           
             setTimeout(() => {
                 toast.remove();
             }, 3000);
         }
     };
 
-    // 添加toast动画样式
     const addToastStyles = () => {
         const style = document.createElement('style');
         style.textContent = `
@@ -903,7 +833,6 @@
         document.head.appendChild(style);
     };
 
-    // 创建控制按钮
     const createControlButtons = () => {
         if (document.getElementById('shoppingControlPanel')) return;
 
@@ -919,10 +848,8 @@
             gap: 10px;
         `;
 
-        // 检查是否在ysc.teamsync.cn页面
         const isYscPage = window.location.href.includes('ysc.teamsync.cn');
 
-        // 如果是ysc页面，添加获取Admin-Token的按钮
         if (isYscPage) {
             const getTokenBtn = document.createElement('button');
             getTokenBtn.textContent = '获取Admin-Token';
@@ -939,7 +866,6 @@
             getTokenBtn.addEventListener('click', handleAdminToken);
             panel.appendChild(getTokenBtn);
 
-            // 添加检查Token状态的按钮
             const checkTokenBtn = document.createElement('button');
             checkTokenBtn.textContent = '检查Token状态';
             checkTokenBtn.style.cssText = `
@@ -962,7 +888,6 @@
             });
             panel.appendChild(checkTokenBtn);
         } else {
-            // 添加登录跳转按钮
             const loginBtn = document.createElement('button');
             loginBtn.textContent = '认证平台登录';
             loginBtn.style.cssText = `
@@ -1006,7 +931,6 @@
             `;
             viewBtn.addEventListener('click', showProductList);
 
-            // "按钮"出证记录"
             const certRecordBtn = document.createElement('button');
             certRecordBtn.textContent = '出证记录';
             certRecordBtn.style.cssText = `
@@ -1044,7 +968,6 @@
         document.body.appendChild(panel);
     };
 
-    // 显示出证记录
     const showCertificationRecords = () => {
         const records = getAllCertificationRecords();
         const existingModal = document.getElementById('certificationRecordsModal');
@@ -1136,7 +1059,6 @@
         document.body.appendChild(modal);
 
         const tableBody = document.getElementById('certRecordsTableBody');
-        // 按时间倒序显示，最新的在前面
         const sortedRecords = [...records].sort((a, b) =>
             new Date(b.requestTime) - new Date(a.requestTime)
         );
@@ -1202,16 +1124,13 @@
             tableBody.appendChild(row);
         });
 
-        // 关闭按钮事件
         document.getElementById('closeCertRecordsBtn').addEventListener('click', () => modal.remove());
 
-        // 清空记录按钮事件
         document.getElementById('clearCertRecordsBtn').addEventListener('click', () => {
             clearCertificationRecords();
             modal.remove();
         });
 
-        // 查看详情按钮事件
         document.querySelectorAll('.viewCertDetails').forEach(btn => {
             btn.addEventListener('click', function() {
                 const recordId = parseInt(this.getAttribute('data-id'));
@@ -1276,7 +1195,6 @@
             });
         });
 
-        // 重试按钮事件 - 只对失败的记录显示
         document.querySelectorAll('.retryCertification').forEach(btn => {
             btn.addEventListener('click', function() {
                 const recordId = parseInt(this.getAttribute('data-id'));
@@ -1284,14 +1202,12 @@
                 const record = records.find(r => r.id === recordId);
 
                 if (record) {
-                    // 查找对应的商品信息
                     const products = getAllProducts();
                     const product = products.find(p => p.productUrl === record.productUrl);
 
                     if (product) {
                         sendCertificationRequest(product)
                             .then(response => {
-                                // 关闭当前模态框并刷新记录列表
                                 modal.remove();
                                 showCertificationRecords();
                             });
@@ -1302,7 +1218,6 @@
             });
         });
 
-        // 删除记录按钮事件
         document.querySelectorAll('.deleteCertRecord').forEach(btn => {
             btn.addEventListener('click', function() {
                 const recordId = parseInt(this.getAttribute('data-id'));
@@ -1316,7 +1231,6 @@
         });
     };
 
-    // 显示已保存的商品列表
     const showProductList = () => {
         const products = getAllProducts();
         const existingList = document.getElementById('productListModal');
@@ -1399,7 +1313,6 @@
 
         const tableBody = document.getElementById('productTableBody');
         products.forEach((product, index) => {
-            // 检查商品是否已出证
             const isCertified = hasProductBeenCertified(product.productUrl);
 
             const row = document.createElement('tr');
@@ -1450,10 +1363,8 @@
 
         document.getElementById('closeListBtn').addEventListener('click', () => modal.remove());
 
-        // 出证按钮事件
         document.querySelectorAll('.certifyProduct').forEach(btn => {
             btn.addEventListener('click', function() {
-                // 如果已出证，则不执行任何操作
                 if (this.textContent.trim() === '已出证') {
                     return;
                 }
@@ -1474,7 +1385,6 @@
             });
         });
 
-        // 删除按钮事件
         document.querySelectorAll('.deleteProduct').forEach(btn => {
             btn.addEventListener('click', function() {
                 const productId = parseInt(this.getAttribute('data-id'));
@@ -1488,7 +1398,6 @@
         });
     };
 
-    // 显示商品信息弹窗
     const showProductInfo = async (productUrl, shopName, platform, extraData = {}) => {
         const existingPopup = document.getElementById('productInfoPopup');
         if (existingPopup) existingPopup.remove();
@@ -1590,18 +1499,15 @@
         document.head.appendChild(style);
         document.body.appendChild(popup);
 
-        // 保存按钮事件
         document.getElementById('saveProduct').addEventListener('click', () => {
             const saveBtn = document.getElementById('saveProduct');
             const certifyBtn = document.getElementById('certifyProduct');
 
-            // 如果已经保存，直接返回
             if (saveBtn.textContent.trim() === '已保存') {
                 showToast('该商品信息已保存，无需重复操作', 'info');
                 return;
             }
 
-            // 构建保存数据
             const saveData = {
                 platform,
                 shopName,
@@ -1610,33 +1516,25 @@
                 salesCount: extraData.salesCount
             };
 
-            // 执行保存操作
             const result = saveProductInfo(saveData);
             if (result.success) {
-                // 更新保存按钮状态
                 saveBtn.textContent = '已保存';
                 saveBtn.style.background = '#9E9E9E';
 
-                // 关键修复：更新出证按钮状态（确保可点击）
                 certifyBtn.textContent = '出证';
                 certifyBtn.style.background = '#2196F3';
 
-                // 存储新保存的商品ID，用于后续出证操作
                 popup.setAttribute('data-product-id', result.product.id);
             }
         });
 
-        // 出证按钮事件
         document.getElementById('certifyProduct').addEventListener('click', () => {
             const certifyBtn = document.getElementById('certifyProduct');
 
-            // 只在已出证时阻止操作
             if (certifyBtn.textContent.trim() === '已出证') {
                 showToast('该商品已出过证，无需重复操作', 'info');
                 return;
             }
-
-            // 获取商品ID（可能是新保存的）
             const productId = popup.getAttribute('data-product-id');
             let productData;
 
@@ -1645,7 +1543,6 @@
                 const products = getAllProducts();
                 productData = products.find(p => p.id === parseInt(productId));
             } else {
-                // 如果没有ID，构建临时商品数据
                 productData = {
                     platform,
                     shopName,
@@ -1660,7 +1557,6 @@
                 sendCertificationRequest(productData)
                     .then(response => {
                         console.log("[商品助手] 出证请求响应:", response);
-                        // 出证成功后更新按钮状态
                         if (response.success) {
                             certifyBtn.textContent = '已出证';
                             certifyBtn.style.background = '#9E9E9E';
@@ -1674,13 +1570,11 @@
             }
         });
 
-        // 关闭按钮事件
         document.getElementById('closeInfo').addEventListener('click', () => {
             popup.remove();
         });
     };
 
-    // 监听商品点击事件
     const setupProductClickMonitor = () => {
         document.addEventListener('click', async function(e) {
             let link = e.target.closest('a');
@@ -1691,8 +1585,6 @@
 
             if (['淘宝', '天猫', '拼多多', '京东'].includes(platform)) {
                 log(`检测到${platform}商品点击: ${url}`);
-
-                // 根据平台调整延迟时间
                 const delayTime = platform === '拼多多' ? 3000 : 2000;
 
                 setTimeout(async () => {
@@ -1713,38 +1605,25 @@
         }, true);
     };
 
-    // 主执行函数
     const main = async () => {
         log('多平台商品信息助手（含出证记录）开始运行 v1.3');
-
-        // 添加toast样式
         addToastStyles();
 
         const domain = window.location.hostname.replace('www.', '').replace('m.', '');
         const platform = getPlatformInfo(window.location.href);
-
-        // 显示当前平台信息
         log(`当前平台: ${platform} (${domain})`);
-
-        // 现在包括ysc.teamsync.cn页面
         if (!['淘宝', '天猫', '拼多多', '京东', '认证平台', '未知平台'].includes(platform)) {
             log(`当前平台不支持: ${domain}`);
             return;
         }
-
-        // 初始化存储
         initStorages();
 
         createControlButtons();
-
-        // 在商品详情页自动显示信息
         if (window.location.href.includes('item.taobao.com') ||
             window.location.href.includes('detail.tmall.com') ||
             window.location.href.includes('pinduoduo.com') ||
             window.location.href.includes('item.jd.com') ||
             window.location.href.includes('mall.jd.com')) {
-
-            // 根据平台调整初始延迟
             const delayTime = platform === '拼多多' ? 3000 : 2000;
 
             setTimeout(async () => {
@@ -1764,3 +1643,4 @@
 
     main();
 })();
+
