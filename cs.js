@@ -1,3 +1,4 @@
+
 // ==UserScript==
 // @name         电商平台商品信息助手
 // @namespace    http://tampermonkey.net/
@@ -354,7 +355,7 @@
             const certifyBtn = popup.querySelector('#certifyProduct');
             if (certifyBtn) {
                 const isCertified = hasProductBeenCertified(productUrl);
-                certifyBtn.textContent = isCertified ? '已出证' : '申请出证';
+                certifyBtn.textContent = isCertified ? '已申请出证' : '申请出证';
                 certifyBtn.style.background = isCertified ? '#9E9E9E' : '#2196F3';
             }
         }
@@ -1417,7 +1418,7 @@
                                 border-radius: 3px;
                                 cursor: pointer;
                                 font-size: 12px;
-                            ">${isCertified ? '已出证' : '出证'}</button>
+                            ">${isCertified ? '已申请出证' : '申请出证'}</button>
                             <button class="deleteProduct" data-id="${product.id}" style="
                                 background: #f44336;
                                 color: white;
@@ -1438,7 +1439,7 @@
         const bindTableButtons = () => {
             document.querySelectorAll('.certifyProduct').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    if (this.textContent.trim() === '已出证') return;
+                    if (this.textContent.trim() === '已申请出证') return;
                     const productId = parseInt(this.getAttribute('data-id'));
                     const product = products.find(p => p.id === productId);
                     if (product) {
@@ -1568,7 +1569,7 @@
 
         // 认证状态判断
         const authState = checkAuthState();
-        const certBtnText = !authState.isAuthenticated ? '需先完成认证' : (isCertified ? '已出证' : '申请出证');
+        const certBtnText = !authState.isAuthenticated ? '需先完成认证' : (isCertified ? '已申请出证' : '申请出证');
         const certBtnBg = !authState.isAuthenticated ? '#9E9E9E' : (isCertified ? '#9E9E9E' : '#2196F3');
         const certBtnDisabled = !authState.isAuthenticated || isCertified;
         const saveBtnDisabled = !authState.isAuthenticated;
@@ -1649,7 +1650,7 @@
             const certBtn = document.getElementById('certifyProduct');
             if (certBtn.disabled) return;
 
-            if (certBtn.textContent.trim() === '已出证') {
+            if (certBtn.textContent.trim() === '已申请出证') {
                 showToast('该商品已完成出证，无需重复操作', 'info');
                 return;
             }
@@ -1675,7 +1676,7 @@
             sendCertificationRequest(product)
                 .then(response => {
                     if (response.success) {
-                        certBtn.textContent = '已出证';
+                        certBtn.textContent = '已申请出证';
                         certBtn.style.background = '#9E9E9E';
                     } else if (response.isAuthError) {
                         // 如果是认证错误，关闭弹窗并刷新按钮状态
