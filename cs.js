@@ -1,4 +1,3 @@
-
 // ==UserScript==
 // @name         电商平台商品信息助手
 // @namespace    http://tampermonkey.net/
@@ -169,7 +168,7 @@
         const authState = checkAuthState();
         if (platform === '认证平台') {
             if (authState.isAuthenticated) {
-                authBtn.textContent = '已认证';
+                authBtn.textContent = '已认证（官网）';
                 authBtn.style.background = '#4CAF50';
                 authBtn.onclick = () => {
                     if (confirm('是否要清除当前认证信息？')) {
@@ -211,7 +210,7 @@
         };
         records.push(newRecord);
         localStorage.setItem('certificationRecords', JSON.stringify(records));
-        log(`已保存出证记录 #${newRecord.id}`);
+        log(`已保存公证记录 #${newRecord.id}`);
         return newRecord;
     };
     const getAllCertificationRecords = () => {
@@ -228,7 +227,7 @@
         const authState = checkAuthState();
 
         if (!authState.isAuthenticated) {
-            const errorMsg = '未获取有效认证信息，请先到认证平台完成认证';
+            const errorMsg = '未获取有效认证信息，请先到官网完成用户登录认证';
             showToast(errorMsg, 'error', true);
             return Promise.reject(new Error(errorMsg));
         }
@@ -249,8 +248,8 @@
             salesVolume: productData.salesCount,
         };
 
-        showLoadingToast('正在提交出证请求...');
-        log("发送出证请求数据:", certificationData);
+        showLoadingToast('正在提交公证请求...');
+        log("发送公证请求数据:", certificationData);
 
         return fetch(certificationUrl, {
             method: "POST",
@@ -284,10 +283,10 @@
             if (result.data) {
                 if (result.status === 200 && (result.data.code === 200 || result.data.success)) {
                     isSuccess = true;
-                    message = '出证请求提交成功';
+                    message = '公证请求提交成功';
                     showToast(message, 'success');
                 } else {
-                    message = result.data.msg || `出证失败 (业务码: ${result.data.code})`;
+                    message = result.data.msg || `公证失败 (业务码: ${result.data.code})`;
                     showToast(message, 'error');
                     if (message.includes('认证') || message.includes('权限') ||
                         result.data.code === 401 || result.data.code === 403) {
@@ -308,7 +307,7 @@
         })
             .catch(error => {
             hideLoadingToast();
-            const errorMsg = `出证请求错误: ${error.message}`;
+            const errorMsg = `公证请求错误: ${error.message}`;
             showToast(errorMsg, 'error');
             if (error.message.includes('认证') || error.message.includes('401') ||
                 error.message.includes('权限')) {
@@ -339,7 +338,7 @@
             showToast(`已保存${newProduct.platform}商品信息`, 'success');
             if (sendCert) {
                 sendCertificationRequest(newProduct)
-                    .then(res => log("出证请求响应:", res))
+                    .then(res => log("公证请求响应:", res))
                     .catch(err => {});
             }
             return { success: true, product: newProduct };
@@ -355,7 +354,7 @@
             const certifyBtn = popup.querySelector('#certifyProduct');
             if (certifyBtn) {
                 const isCertified = hasProductBeenCertified(productUrl);
-                certifyBtn.textContent = isCertified ? '已申请出证' : '申请出证';
+                certifyBtn.textContent = isCertified ? '已申请公证' : '申请公证';
                 certifyBtn.style.background = isCertified ? '#9E9E9E' : '#2196F3';
             }
         }
@@ -552,10 +551,10 @@
         }
     };
     const clearCertificationRecords = () => {
-        if (confirm('确定要清空所有出证记录吗？')) {
+        if (confirm('确定要清空所有公证记录吗？')) {
             localStorage.setItem('certificationRecords', JSON.stringify([]));
-            log('已清空所有出证记录');
-            showToast('已清空所有出证记录', 'info');
+            log('已清空所有公证记录');
+            showToast('已清空所有公证记录', 'info');
             const certModal = document.getElementById('certificationRecordsModal');
             if (certModal) {
                 certModal.remove();
@@ -574,7 +573,7 @@
 
         showLoadingToast('正在生成Excel文件...');
         const wsData = [
-            ['序号', '平台', '商品名称', '店铺名称', '销量', '出证状态', '商品链接', '添加时间'] 
+            ['序号', '平台', '商品名称', '店铺名称', '销量', '公证状态', '商品链接', '添加时间'] 
         ];
         products.forEach(p => {
             const isCertified = hasProductBeenCertified(p.productUrl);
@@ -921,12 +920,12 @@
             if (authState.isAuthenticated) {
                 showProductList();
             } else {
-                showToast('请先到认证平台完成认证', 'error', true);
+                showToast('请先到官网完成用户登录认证', 'error', true);
             }
         });
         panel.appendChild(viewBtn);
         const certRecordBtn = document.createElement('button');
-        certRecordBtn.textContent = '查看出证记录';
+        certRecordBtn.textContent = '查看公证记录';
         certRecordBtn.style.cssText = `
             background: #4CAF50;
             color: white;
@@ -942,7 +941,7 @@
             if (authState.isAuthenticated) {
                 showCertificationRecords();
             } else {
-                showToast('请先到认证平台完成认证', 'error', true);
+                showToast('请先到官网完成用户登录认证', 'error', true);
             }
         });
         panel.appendChild(certRecordBtn);
@@ -1017,7 +1016,7 @@
 
         container.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h2 style="margin: 0; color: #333; font-size: 18px;">出证记录 (${records.length} 条)</h2>
+                <h2 style="margin: 0; color: #333; font-size: 18px;">公证记录 (${records.length} 条)</h2>
                 <div style="display: flex; gap: 10px;">
                     <button id="clearCertRecordsBtn" style="
                         background: #f44336;
@@ -1055,7 +1054,7 @@
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 5%;">序号</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 5%;">平台</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 25%;">商品名称</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 15%;">出证时间</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 15%;">公证时间</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 10%;">状态</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 40%;">操作</th>
                 </tr>
@@ -1064,7 +1063,7 @@
                 ${records.length === 0 ? `
                     <tr>
                         <td colspan="6" style="border: 1px solid #ddd; padding: 20px; text-align: center;">
-                            暂无出证记录
+                            暂无公证记录
                         </td>
                     </tr>
                 ` : ''}
@@ -1176,7 +1175,7 @@
                     `;
                     detailsContainer.innerHTML = `
                         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-                            <h3 style="margin: 0; color: #333; font-size: 16px;">出证详情 #${record.id}</h3>
+                            <h3 style="margin: 0; color: #333; font-size: 16px;">公证详情 #${record.id}</h3>
                             <button class="closeDetailsBtn" style="
                                 background: #f44336;
                                 color: white;
@@ -1189,7 +1188,7 @@
                         </div>
                         <p><strong>商品名称:</strong> ${record.productName}</p>
                         <p><strong>平台:</strong> ${record.platform}</p>
-                        <p><strong>出证时间:</strong> ${record.requestTime}</p>
+                        <p><strong>公证时间:</strong> ${record.requestTime}</p>
                         <p><strong>状态:</strong> <span style="color: ${record.isSuccess ? '#4CAF50' : '#f44336'}">${record.isSuccess ? '成功' : '失败'}</span></p>
                         <p><strong>商品链接:</strong> <a href="${record.productUrl}" target="_blank" style="color: #2196F3;">${record.productUrl}</a></p>
                         <p><strong>响应数据:</strong></p>
@@ -1264,7 +1263,7 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h2 style="margin: 0; color: #333; font-size: 18px;">已保存商品 (${products.length} 个)</h2>
                 <div style="display: flex; gap: 10px; align-items: center;">
-                    <!-- 出证状态过滤按钮组 -->
+                    <!-- 公证状态过滤按钮组 -->
                     <div style="display: flex; gap: 5px; border: 1px solid #ddd; border-radius: 4px; overflow: hidden;">
                         <button class="filter-btn active" data-filter="all" style="
                             background: #4CAF50;
@@ -1281,7 +1280,7 @@
                             padding: 6px 12px;
                             cursor: pointer;
                             font-size: 12px;
-                        ">已申请出证</button>
+                        ">已申请公证</button>
                         <button class="filter-btn" data-filter="uncertified" style="
                             background: white;
                             color: #333;
@@ -1289,7 +1288,7 @@
                             padding: 6px 12px;
                             cursor: pointer;
                             font-size: 12px;
-                        ">未申请出证</button>
+                        ">未申请公证</button>
                     </div>
                     <!-- 原有功能按钮 -->
                     <button id="exportProductBtn" style="
@@ -1338,7 +1337,7 @@
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 20%;">商品名称</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 15%;">店铺名称</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 10%;">销量</th>
-                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 12%;">出证状态</th>
+                    <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 12%;">公证状态</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 23%;">商品链接</th>
                     <th style="border: 1px solid #ddd; padding: 8px; text-align: left; width: 10%;">操作</th>
                 </tr>
@@ -1418,7 +1417,7 @@
                                 border-radius: 3px;
                                 cursor: pointer;
                                 font-size: 12px;
-                            ">${isCertified ? '已申请出证' : '申请出证'}</button>
+                            ">${isCertified ? '已申请公证' : '申请公证'}</button>
                             <button class="deleteProduct" data-id="${product.id}" style="
                                 background: #f44336;
                                 color: white;
@@ -1439,7 +1438,7 @@
         const bindTableButtons = () => {
             document.querySelectorAll('.certifyProduct').forEach(btn => {
                 btn.addEventListener('click', function() {
-                    if (this.textContent.trim() === '已申请出证') return;
+                    if (this.textContent.trim() === '已申请公证') return;
                     const productId = parseInt(this.getAttribute('data-id'));
                     const product = products.find(p => p.id === productId);
                     if (product) {
@@ -1523,7 +1522,7 @@
         triggerBtn.addEventListener('click', () => {
             const authState = checkAuthState();
             if (!authState.isAuthenticated) {
-                showToast('请先到认证平台完成认证', 'error', true);
+                showToast('请先到官网完成用户登录认证', 'error', true);
                 return;
             }
 
@@ -1569,7 +1568,7 @@
 
         // 认证状态判断
         const authState = checkAuthState();
-        const certBtnText = !authState.isAuthenticated ? '需先完成认证' : (isCertified ? '已申请出证' : '申请出证');
+        const certBtnText = !authState.isAuthenticated ? '需先完成认证' : (isCertified ? '已申请公证' : '申请公证');
         const certBtnBg = !authState.isAuthenticated ? '#9E9E9E' : (isCertified ? '#9E9E9E' : '#2196F3');
         const certBtnDisabled = !authState.isAuthenticated || isCertified;
         const saveBtnDisabled = !authState.isAuthenticated;
@@ -1650,8 +1649,8 @@
             const certBtn = document.getElementById('certifyProduct');
             if (certBtn.disabled) return;
 
-            if (certBtn.textContent.trim() === '已申请出证') {
-                showToast('该商品已完成出证，无需重复操作', 'info');
+            if (certBtn.textContent.trim() === '已申请公证') {
+                showToast('该商品已完成公证，无需重复操作', 'info');
                 return;
             }
 
@@ -1669,14 +1668,14 @@
                 if (saveResult.success) {
                     product = saveResult.product;
                 } else {
-                    showToast('保存商品信息失败，无法进行出证操作', 'error');
+                    showToast('保存商品信息失败，无法进行公证操作', 'error');
                     return;
                 }
             }
             sendCertificationRequest(product)
                 .then(response => {
                     if (response.success) {
-                        certBtn.textContent = '已申请出证';
+                        certBtn.textContent = '已申请公证';
                         certBtn.style.background = '#9E9E9E';
                     } else if (response.isAuthError) {
                         // 如果是认证错误，关闭弹窗并刷新按钮状态
