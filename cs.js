@@ -182,7 +182,7 @@
             }
         } else {
             if (authState.isAuthenticated) {
-                authBtn.textContent = '已登录';
+                authBtn.textContent = '已登录(官网)';
                 authBtn.style.background = '#4CAF50';
                 authBtn.onclick = () => {
                     showToast('您已完成认证，将跳转到认证平台', 'info');
