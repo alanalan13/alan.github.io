@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         电商平台商品信息助手
 // @namespace    http://tampermonkey.net/
-// @version      1.3
-// @description  电商平台商品信息提取、保存、出证及记录管理工具
+// @version      1
+// @description  电商平台商品信息提取、保存、出证及记录管理工具，支持淘宝、天猫、京东、拼多多、1688
 // @author       alan
 // @match        *://www.taobao.com/*
 // @match        *://taobao.com/*
@@ -13,6 +13,8 @@
 // @match        *://item.jd.com/*
 // @match        *://mall.jd.com/*
 // @match        *://jd.com/*
+// @match        *://*.1688.com/*
+// @match        *://1688.com/*
 // @match        *://ysc.teamsync.cn/*
 // @require      https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js
 // @grant        GM_setValue
@@ -47,6 +49,7 @@
         if (url.includes('taobao.com')) return '淘宝';
         if (url.includes('pinduoduo.com')) return '拼多多';
         if (url.includes('jd.com')) return '京东';
+        if (url.includes('1688.com')) return '1688';
         if (url.includes('ysc.teamsync.cn')) return '认证平台';
         return '未知平台';
     };
@@ -141,7 +144,7 @@
         const triggerBtn = document.getElementById('productInfoTrigger');
         const platform = getPlatformInfo(window.location.href);
 
-        if (!triggerBtn || !['淘宝', '天猫', '拼多多', '京东'].includes(platform)) {
+        if (!triggerBtn || !['淘宝', '天猫', '拼多多', '京东', '1688'].includes(platform)) {
             return;
         }
 
@@ -150,7 +153,9 @@
             triggerBtn.disabled = false;
             triggerBtn.style.background = platform === '淘宝' ? '#FF4400' :
             platform === '天猫' ? '#FF0036' :
-            platform === '拼多多' ? '#E02E24' : '#E31436';
+            platform === '拼多多' ? '#E02E24' :
+            platform === '京东' ? '#E31436' :
+            platform === '1688' ? '#FF7A45' : '#666';
             triggerBtn.style.cursor = 'pointer';
             triggerBtn.title = '点击查看商品信息 | 可拖拽移动位置';
         } else {
@@ -182,7 +187,7 @@
             }
         } else {
             if (authState.isAuthenticated) {
-                authBtn.textContent = '已登录(官网)';
+                authBtn.textContent = '已登录';
                 authBtn.style.background = '#4CAF50';
                 authBtn.onclick = () => {
                     showToast('您已完成认证，将跳转到认证平台', 'info');
@@ -394,6 +399,10 @@
                 const title = document.title.trim();
                 const jdMatch = title.split('_京东')[0].trim();
                 if (jdMatch && jdMatch.length > 5) return jdMatch;
+            } else if (platform === '1688') {
+                const title = document.title.trim();
+                const match = title.split('-')[0].trim();
+                if (match && match.length > 5) return match;
             } else {
                 return document.title.split('-')[0].trim();
             }
@@ -410,6 +419,11 @@
             selectors = [
                 ".sku-name", "#product-name", ".item-name", "h1[class*='product-title']",
                 "[class*='main-title']", "[id*='productName']"
+            ];
+        } else if (platform === '1688') {
+            selectors = [
+                "h1[dtilte]", ".product-title", ".detail-title", 
+                "[class*='title-']", ".title-text", "#mod-detail-title"
             ];
         } else {
             selectors = [
@@ -434,46 +448,82 @@
         return `未识别商品名称`;
     };
     const getSalesCount = (platform) => {
-        let selectors, salesPattern;
-        if (platform === '拼多多') {
-            selectors = [
-                "div[class='AsbGpQv_']", "[class*='sales-count']", "[class*='sold-num']",
-                "[class*='volume']", "[class*='sales-amount']", "[class*='sell-count']"
-            ];
-            salesPattern = /(已售|销量|售)\s*([\d.]+[万]+[\+]?)/;
-        } else if (platform === '京东') {
-            selectors = [
-                ".sales-amount", "[class*='sell-count']", "[id*='comment-count']",
-                "[class*='item-comment']", ".count"
-            ];
-            salesPattern = /(已售|销量|评价)\s*([\d.]+[万]+[\+]?)/;
-        } else {
-            selectors = [
-                "div[class*='salesDesc']", ".tm-count", ".sale-num", ".sell-count",
-                ".tm-ind-sellCount .tm-count", ".tb-detail-sell-count .tm-count"
-            ];
-            salesPattern = /(已售|销量|月销)\s*([\d.]+[万]+[\+]?)/;
-        }
+    let selectors, salesPattern;
+    if (platform === '拼多多') {
+        selectors = [
+            "div[class='AsbGpQv_']", "[class*='sales-count']", "[class*='sold-num']",
+            "[class*='volume']", "[class*='sales-amount']", "[class*='sell-count']"
+        ];
+        salesPattern = /(已售|销量|售)\s*([\d.]+[万]+[\+]?)/;
+    } else if (platform === '京东') {
+        selectors = [
+            ".sales-amount", "[class*='sell-count']", "[id*='comment-count']",
+            "[class*='item-comment']", ".count"
+        ];
+        salesPattern = /(已售|销量|评价)\s*([\d.]+[万]+[\+]?)/;
+    } else if (platform === '1688') {
+        selectors = [
+            "div[class='trade-info v-flex']",
+            ".sold-num", "[class*='h1']", "[class*='volume-']",
+            ".trade-info .hl", ".offer-sellAmount", "[id*='widget-sellcount']",
+            "div:has(span:contains('销量:'))",
+            "div:has(span:contains('成交'))", 
+            "div:has(span:contains('套成交'))" 
+        ];
+        salesPattern = /(\d+万\+?|\d+\+\s*[套个双]成交)/; 
+    } else {
+        selectors = [
+            "div[class*='salesDesc']", ".tm-count", ".sale-num", ".sell-count",
+            ".tm-ind-sellCount .tm-count", ".tb-detail-sell-count .tm-count"
+        ];
+        salesPattern = /(已售|销量|月销)\s*([\d.]+[万]+[\+]?)/;
+    }
 
-        for (const selector of selectors) {
-            const element = document.querySelector(selector);
-            if (element) {
-                const salesText = element.innerText.trim();
-                if (salesText) {
+    for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+            const salesText = element.innerText.trim();
+            if (salesText) {
+                if (platform === '1688') {
+                    const match = salesText.match(salesPattern);
+                    if (match && match[1]) {
+                        return match[1].replace(/\s+/g, ' ').trim(); 
+                    }
+                    return salesText
+                        .replace(/(暂无评分|\d+\.\d+)\s*/, '') 
+                        .replace(/\d+\+?条评价\s*/, '')
+                        .replace(/一年内\s*/, '')
+                        .trim();
+                } else {
                     const salesMatch = salesText.match(salesPattern);
                     if (salesMatch && salesMatch[2]) return salesMatch[2];
                     return salesText;
                 }
             }
         }
+    }
 
-        return new Promise(resolve => {
-            setTimeout(() => {
-                for (const selector of selectors) {
-                    const element = document.querySelector(selector);
-                    if (element) {
-                        const salesText = element.innerText.trim();
-                        if (salesText) {
+    return new Promise(resolve => {
+        setTimeout(() => {
+            for (const selector of selectors) {
+                const element = document.querySelector(selector);
+                if (element) {
+                    const salesText = element.innerText.trim();
+                    if (salesText) {
+                        if (platform === '1688') {
+                            const match = salesText.match(salesPattern);
+                            if (match && match[1]) {
+                                resolve(match[1].replace(/\s+/g, ' ').trim());
+                                return;
+                            }
+                            resolve(salesText
+                                .replace(/(暂无评分|\d+\.\d+)\s*/, '') 
+                                .replace(/\d+\+?条评价\s*/, '')
+                                .replace(/一年内\s*/, '')
+                                .trim()
+                            );
+                            return;
+                        } else {
                             const salesMatch = salesText.match(salesPattern);
                             if (salesMatch && salesMatch[2]) {
                                 resolve(salesMatch[2]);
@@ -484,39 +534,62 @@
                         }
                     }
                 }
-                resolve('未知');
-            }, 2000);
-        });
-    };
+            }
+            resolve('未知');
+        }, 2000);
+    });
+};
 
     const getShopName = (platform) => {
-        let selectors;
-        if (platform === '拼多多') {
-            selectors = [
-                "div[class='BAq4Lzv7']", ".mall-name", ".seller-name", ".shop-name",
-                ".merchant-name", "[class*='shop-name']", "[class*='mall-name']"
-            ];
-        } else if (platform === '京东') {
-            selectors = [
-                "div[class='name']", ".shop-name", ".J-hove-wrap", "[class*='seller-name']",
-                "[id*='shopInfoLink']", ".shop-title"
-            ];
-        } else {
-            selectors = [
-                "span[class*='shopName']", "a[class*='shopName']", ".shop-name > a",
-                ".slogo-shopname > a", "[data-spm='a220m.1000858']"
-            ];
-        }
+    let selectors;
+    if (platform === '拼多多') {
+        selectors = [
+            "div[class='BAq4Lzv7']", ".mall-name", ".seller-name", ".shop-name",
+            ".merchant-name", "[class*='shop-name']", "[class*='mall-name']"
+        ];
+    } else if (platform === '京东') {
+        selectors = [
+            "div[class='name']", ".shop-name", ".J-hove-wrap", "[class*='seller-name']",
+            "[id*='shopInfoLink']", ".shop-title"
+        ];
+    } else if (platform === '1688') {
+        selectors = [
+            "h1[title]",
+            "a[class*='shop-company-name']",
+        ];
+    } else {
+        selectors = [
+            "span[class*='shopName']", "a[class*='shopName']", ".shop-name > a",
+            ".slogo-shopname > a", "[data-spm='a220m.1000858']"
+        ];
+    }
 
-        for (const selector of selectors) {
-            const element = document.querySelector(selector);
-            if (element) {
-                const shopName = element.textContent.trim();
-                if (shopName && shopName.length > 2) {
-                    return shopName;
-                }
+    for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+            const shopName = element.textContent.trim();
+            if (shopName && shopName.length > 2) {
+                return shopName;
             }
         }
+    }
+
+    return new Promise(resolve => {
+        setTimeout(() => {
+            for (const selector of selectors) {
+                const element = document.querySelector(selector);
+                if (element) {
+                    const shopName = element.textContent.trim();
+                    if (shopName && shopName.length > 2) {
+                        resolve(shopName);
+                        return;
+                    }
+                }
+            }
+            resolve(null);
+        }, 2000);
+    });
+
 
         return new Promise(resolve => {
             setTimeout(() => {
@@ -903,6 +976,24 @@
             showToast('已打开拼多多网页版', 'info');
         });
         panel.appendChild(pddJumpBtn);
+        // 新增1688跳转按钮
+        const alibabaJumpBtn = document.createElement('button');
+        alibabaJumpBtn.textContent = '跳转1688网页版';
+        alibabaJumpBtn.style.cssText = `
+            background: #FF7A45;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 13px;
+            text-align: left;
+        `;
+        alibabaJumpBtn.addEventListener('click', () => {
+            window.open('https://www.1688.com/', '_blank');
+            showToast('已打开1688网页版', 'info');
+        });
+        panel.appendChild(alibabaJumpBtn);
         const viewBtn = document.createElement('button');
         viewBtn.textContent = '查看商品记录';
         viewBtn.style.cssText = `
@@ -1089,7 +1180,9 @@
                     <span style="color: ${
                         record.platform === '淘宝' ? '#FF4400' :
                         record.platform === '天猫' ? '#FF0036' :
-                        record.platform === '拼多多' ? '#E02E24' : '#E31436'
+                        record.platform === '拼多多' ? '#E02E24' :
+                        record.platform === '京东' ? '#E31436' :
+                        record.platform === '1688' ? '#FF7A45' : '#666'
                     }">${record.platform}</span>
                 </td>
                 <td style="border: 1px solid #ddd; padding: 8px; word-break: break-all;">${record.productName}</td>
@@ -1393,7 +1486,9 @@
                         <span style="color: ${
                             product.platform === '淘宝' ? '#FF4400' :
                             product.platform === '天猫' ? '#FF0036' :
-                            product.platform === '拼多多' ? '#E02E24' : '#E31436'
+                            product.platform === '拼多多' ? '#E02E24' :
+                            product.platform === '京东' ? '#E31436' :
+                            product.platform === '1688' ? '#FF7A45' : '#666'
                         }">${product.platform}</span>
                     </td>
                     <td style="border: 1px solid #ddd; padding: 8px; word-break: break-all;">${product.productName}</td>
@@ -1578,7 +1673,9 @@
             <h3 style="margin-top: 0; color: ${
                 platform === '淘宝' ? '#FF4400' :
                 platform === '天猫' ? '#FF0036' :
-                platform === '拼多多' ? '#E02E24' : '#E31436'
+                platform === '拼多多' ? '#E02E24' :
+                platform === '京东' ? '#E31436' :
+                platform === '1688' ? '#FF7A45' : '#666'
             }; font-size: 16px;">${platform}商品信息</h3>
             <p style="margin: 8px 0; font-size: 13px; color: #666;">
                 <strong>平台:</strong><br><span id="platform">${platform}</span>
@@ -1704,7 +1801,7 @@
             addGlobalStyles();
             createControlButtons();
 
-            if (['淘宝', '天猫', '拼多多', '京东'].includes(platform)) {
+            if (['淘宝', '天猫', '拼多多', '京东', '1688'].includes(platform)) {
                 log(`开始提取${platform}商品信息`);
                 let shopName = await getShopName(platform);
                 let salesCount = await getSalesCount(platform);
