@@ -976,7 +976,6 @@
             showToast('已打开拼多多网页版', 'info');
         });
         panel.appendChild(pddJumpBtn);
-        // 新增1688跳转按钮
         const alibabaJumpBtn = document.createElement('button');
         alibabaJumpBtn.textContent = '跳转1688网页版';
         alibabaJumpBtn.style.cssText = `
@@ -1775,7 +1774,6 @@
                         certBtn.textContent = '已申请公证';
                         certBtn.style.background = '#9E9E9E';
                     } else if (response.isAuthError) {
-                        // 如果是认证错误，关闭弹窗并刷新按钮状态
                         popup.style.display = 'none';
                         triggerBtn.textContent = `商品信息 ▶`;
                     }
@@ -1827,3 +1825,4 @@
     };
     main();
 })();
+
