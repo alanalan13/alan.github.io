@@ -1820,9 +1820,10 @@
             log("脚本初始化完成");
         } catch (error) {
             log("主程序执行出错:", error);
-            showToast(`脚本初始化失败: ${error.message}`, 'error');
+            //showToast(`脚本初始化失败: ${error.message}`, 'error');
         }
     };
     main();
 })();
+
 
