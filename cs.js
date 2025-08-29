@@ -80,7 +80,7 @@
                 const authState = GM_getValue(AUTH_STATE_KEY);
 
                 if (savedToken && authState) {
-                    showToast('已成功获取最新认证信息', 'success');
+                    // showToast('已成功获取最新认证信息', 'success'); // ruanjl
                     updateAllButtonStates();
                     return true;
                 } else {
@@ -99,7 +99,7 @@
                 }
             }
         } else {
-            showToast('未找到认证信息，请先登录认证平台', 'error');
+            // showToast('未找到认证信息，请先登录认证平台', 'error'); // ruanjl
             return false;
         }
     };
@@ -165,7 +165,7 @@
             triggerBtn.title = '请先到认证平台获取认证信息 | 可拖拽移动位置';
         }
     };
-    const updateControlPanelAuthBtn = () => {
+    const updateControlPanelAuthBtn = async () => {
         const platform = getPlatformInfo(window.location.href);
         const authBtn = document.getElementById('authControlBtn');
         if (!authBtn) return;
@@ -187,6 +187,15 @@
             }
         } else {
             if (authState.isAuthenticated) {
+
+                // 按钮名称不一致则说明登录状态改变
+                if(authBtn.textContent != '已登录'){// ruanjl
+                    const currentUrl = window.location.href;
+                    let shopName = await getShopName(platform);
+                    let salesCount = await getSalesCount(platform);
+                    showProductInfo(currentUrl, shopName, platform, { salesCount: salesCount });
+                }
+
                 authBtn.textContent = '已登录';
                 authBtn.style.background = '#4CAF50';
                 authBtn.onclick = () => {
@@ -194,6 +203,15 @@
                     window.open(LOGIN_URL, '_blank');
                 };
             } else {
+
+                // 按钮名称不一致则说明登录状态改变
+                if(authBtn.textContent != '登录'){// ruanjl
+                    const currentUrl = window.location.href;
+                    let shopName = await getShopName(platform);
+                    let salesCount = await getSalesCount(platform);
+                    showProductInfo(currentUrl, shopName, platform, { salesCount: salesCount });
+                }
+
                 authBtn.textContent = '登录';
                 authBtn.style.background = '#9C27B0';
                 authBtn.onclick = redirectToLogin;
@@ -1820,22 +1838,38 @@
             addGlobalStyles();
             createControlButtons();
 
-            if (['淘宝', '天猫', '拼多多', '京东', '1688'].includes(platform)) {
-                log(`开始提取${platform}商品信息`);
-                let shopName = await getShopName(platform);
-                let salesCount = await getSalesCount(platform);
-                showProductInfo(currentUrl, shopName, platform, { salesCount: salesCount });
-                log(`商品信息按钮已创建（默认禁用）`);
-            }
-            else if (platform === '认证平台') {
-                const authState = checkAuthState();
-                if (!authState.isAuthenticated) {
-                    setTimeout(() => {
-                        showToast('请点击"获取认证信息"以启用全部功能', 'info');
-                    }, 1000);
-                } else {
-                    showToast('您已完成认证，可以使用所有功能', 'success');
+            // ruanjl
+            if(currentUrl.includes('https://ysc.teamsync.cn/login')){
+                resetAuthState();// 重置token
+
+                window.setInterval(() => {
+                    handleAdminToken();
+                }, 3000);
+
+            }else{
+                window.setInterval(() => {
+                    updateControlPanelAuthBtn();
+                }, 3000);
+
+                if (['淘宝', '天猫', '拼多多', '京东', '1688'].includes(platform)) {
+                    log(`开始提取${platform}商品信息`);
+                    let shopName = await getShopName(platform);
+                    let salesCount = await getSalesCount(platform);
+                    showProductInfo(currentUrl, shopName, platform, { salesCount: salesCount });
+
+                    log(`商品信息按钮已创建（默认禁用）`);
                 }
+                else if (platform === '认证平台') {
+                    const authState = checkAuthState();
+                    if (!authState.isAuthenticated) {
+                        setTimeout(() => {
+                            showToast('请点击"获取认证信息"以启用全部功能', 'info');
+                        }, 1000);
+                    } else {
+                        showToast('您已完成认证，可以使用所有功能', 'success');
+                    }
+                }
+
             }
 
             log("脚本初始化完成");
