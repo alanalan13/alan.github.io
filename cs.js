@@ -451,7 +451,7 @@
     let selectors, salesPattern;
     if (platform === '拼多多') {
         selectors = [
-            "div[class='AsbGpQv_']", "[class*='sales-count']", "[class*='sold-num']",
+            "div[class='AsbGpQv_']", "[class*='sales-count']", "span[aria-hidden]",
             "[class*='volume']", "[class*='sales-amount']", "[class*='sell-count']"
         ];
         salesPattern = /(已售|销量|售)\s*([\d.]+[万]+[\+]?)/;
@@ -1825,5 +1825,6 @@
     };
     main();
 })();
+
 
 
