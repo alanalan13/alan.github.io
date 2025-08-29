@@ -455,6 +455,27 @@
             "[class*='volume']", "[class*='sales-amount']", "[class*='sell-count']"
         ];
         salesPattern = /(已售|销量|售)\s*([\d.]+[万]+[\+]?)/;
+        for (const selector of selectors) {
+        const element = document.querySelector(selector);
+        if (element) {
+            const salesText = element.innerText.trim();
+            if (salesText) {
+                if (platform === '拼多多') {
+                    const match = salesText.match(salesPattern);
+                    if (match && match[1]) {
+                        return match[1].replace(/\s+/g, ' ').trim(); 
+                    }
+                    return salesText
+                        .replace(/快要抢光\s*/, '')
+                        .trim();
+                } else {
+                    const salesMatch = salesText.match(salesPattern);
+                    if (salesMatch && salesMatch[2]) return salesMatch[2];
+                    return salesText;
+                }
+            }
+        }
+    }
     } else if (platform === '京东') {
         selectors = [
             ".sales-amount", "[class*='sell-count']", "[id*='comment-count']",
