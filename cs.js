@@ -28,6 +28,7 @@
 
     // 配置常量
     const LOGIN_URL = "https://ysc.teamsync.cn/login?redirect=%2Findex";
+    const ECTASKYING_URL = "https://ysc.teamsync.cn/tool/ecTaskYing?autoOpenGood=true&taskYingId=1";// 跳转商品记录的链接 ruanjl
     const AUTH_STATE_KEY = 'yscAuthState'; 
     const TOKEN_KEY = 'yscAdminToken';     
     const CONTROL_PANEL_POS_KEY = 'controlPanelPosition'; 
@@ -340,6 +341,44 @@
             throw error;
         });
     };
+
+    // 验证token是否过期了 ruanjl
+    const handleTokeAvailable = () => {
+        const authState = checkAuthState();
+        if (!authState.isAuthenticated) {
+            const errorMsg = '未获取有效认证信息，请先到官网完成用户登录认证';
+            showToast(errorMsg, 'error', true);
+            return Promise.reject(new Error(errorMsg));
+        }
+
+        const certificationUrl = "https://ysc.teamsync.cn/prod-api/system/ecTaskYingGood/list?pageNum=1&pageSize=10&taskYingId=1";
+
+        let token;
+        try {
+            token = GM_getValue(TOKEN_KEY) || localStorage.getItem(TOKEN_KEY);
+        } catch (e) {
+            token = localStorage.getItem(TOKEN_KEY);
+        }
+        const authorizationToken = `Bearer ${token}`;
+
+        const options = {
+            method: 'GET',
+            headers: {
+                Authorization: authorizationToken,
+                'content-type': 'application/json'
+            }
+        };
+
+        return fetch(certificationUrl, options)
+            .then(response => response.json())
+            .then(response => {
+                if(response.code === 401){
+                    resetAuthState();// 重置token
+                }
+            })
+            .catch(err => console.error(err));
+    }
+
     const saveProductInfo = (data, sendCert = false) => {
         initStorages();
         const products = JSON.parse(localStorage.getItem('multiPlatformProducts'));
@@ -1047,7 +1086,8 @@
         viewBtn.addEventListener('click', () => {
             const authState = checkAuthState();
             if (authState.isAuthenticated) {
-                showProductList();
+                // showProductList();
+                window.open(ECTASKYING_URL, '_blank');// ruanjl
             } else {
                 showToast('请先到官网完成用户登录认证', 'error', true);
             }
@@ -1852,6 +1892,10 @@
                 }, 3000);
 
                 if (['淘宝', '天猫', '拼多多', '京东', '1688'].includes(platform)) {
+
+                    // 验证认证是否过期 ruanjl
+                    handleTokeAvailable();
+
                     log(`开始提取${platform}商品信息`);
                     let shopName = await getShopName(platform);
                     let salesCount = await getSalesCount(platform);
