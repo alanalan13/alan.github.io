@@ -307,7 +307,10 @@
             if (result.data) {
                 if (result.status === 200 && (result.data.code === 200 || result.data.success)) {
                     isSuccess = true;
-                    message = '公证请求提交成功';
+                    
+                    // message = '公证请求提交成功'; // ruanjl
+                    message = '保存商品信息请求提交成功';
+
                     showToast(message, 'success');
                 } else {
                     message = result.data.msg || `公证失败 (业务码: ${result.data.code})`;
@@ -505,85 +508,63 @@
         return `未识别商品名称`;
     };
     const getSalesCount = (platform) => {
-    let selectors, salesPattern;
-    if (platform === '拼多多') {
-        selectors = [
-            "div[class='BD_8SBr6']","div[class='AsbGpQv_']", "[class*='sales-count']", "span[aria-hidden]",
-            "[class*='volume']", "[class*='sales-amount']", "[class*='sell-count']"
-        ];
-        salesPattern = /(已售|销量|售)\s*([\d.]+[万]+[\+]?)/;
-        for (const selector of selectors) {
-        const element = document.querySelector(selector);
-        if (element) {
-            const salesText = element.innerText.trim();
-            if (salesText) {
-                if (platform === '拼多多') {
-                    const match = salesText.match(salesPattern);
-                    if (match && match[1]) {
-                        return match[1].replace(/\s+/g, ' ').trim(); 
-                    }
-                    return salesText
-                        .replace(/快要抢光\s*/, '')
-                        .trim();
-                } else {
-                    const salesMatch = salesText.match(salesPattern);
-                    if (salesMatch && salesMatch[2]) return salesMatch[2];
-                    return salesText;
-                }
-            }
-        }
-    }
-    } else if (platform === '京东') {
-        selectors = [
-            ".sales-amount", "[class*='sell-count']", "[id*='comment-count']",
-            "[class*='item-comment']", ".count"
-        ];
-        salesPattern = /(已售|销量|评价)\s*([\d.]+[万]+[\+]?)/;
-    } else if (platform === '1688') {
-        selectors = [
-            "div[class='trade-info v-flex']",
-            ".sold-num", "[class*='h1']", "[class*='volume-']",
-            ".trade-info .hl", ".offer-sellAmount", "[id*='widget-sellcount']",
-            "div:has(span:contains('销量:'))",
-            "div:has(span:contains('成交'))", 
-            "div:has(span:contains('套成交'))" 
-        ];
-        salesPattern = /(\d+万\+?|\d+\+\s*[套个双]成交)/; 
-    } else {
-        selectors = [
-            "div[class*='salesDesc']", ".tm-count", ".sale-num", ".sell-count",
-            ".tm-ind-sellCount .tm-count", ".tb-detail-sell-count .tm-count"
-        ];
-        salesPattern = /(已售|销量|月销)\s*([\d.]+[万]+[\+]?)/;
-    }
-
-    for (const selector of selectors) {
-        const element = document.querySelector(selector);
-        if (element) {
-            const salesText = element.innerText.trim();
-            if (salesText) {
-                if (platform === '1688') {
-                    const match = salesText.match(salesPattern);
-                    if (match && match[1]) {
-                        return match[1].replace(/\s+/g, ' ').trim(); 
-                    }
-                    return salesText
-                        .replace(/(暂无评分|\d+\.\d+)\s*/, '') 
-                        .replace(/\d+\+?条评价\s*/, '')
-                        .replace(/一年内\s*/, '')
-                        .trim();
-                } else {
-                    const salesMatch = salesText.match(salesPattern);
-                    if (salesMatch && salesMatch[2]) return salesMatch[2];
-                    return salesText;
-                }
-            }
-        }
-    }
-
-    return new Promise(resolve => {
-        setTimeout(() => {
+        let selectors, salesPattern;
+        if (platform === '拼多多') {
+            selectors = [
+                "div[class='BD_8SBr6']","div[class='AsbGpQv_']", "[class*='sales-count']", "span[aria-hidden]",
+                "[class*='volume']", "[class*='sales-amount']", "[class*='sell-count']"
+            ];
+            salesPattern = /(已售|销量|售)\s*([\d.]+[万]+[\\+]?)/;
             for (const selector of selectors) {
+            const element = document.querySelector(selector);
+            if (element) {
+                const salesText = element.innerText.trim();
+                if (salesText) {
+                    if (platform === '拼多多') {
+                        const match = salesText.match(salesPattern);
+                        if (match && match[1]) {
+                            return match[1].replace(/\s+/g, ' ').trim(); 
+                        }
+                        return salesText
+                            .replace(/快要抢光\s*/, '')
+                            .trim();
+                    } else {
+                        const salesMatch = salesText.match(salesPattern);
+                        if (salesMatch && salesMatch[2]) return salesMatch[2];
+                        return salesText;
+                    }
+                }
+            }
+        }
+        } else if (platform === '京东') {
+            selectors = [
+                ".sales-amount", "[class*='sell-count']", "[id*='comment-count']",
+                "[class*='item-comment']", ".count"
+            ];
+            salesPattern = /(已售|销量|评价)\s*([\d.]+[万]+[\\+]?)/;
+        } else if (platform === '1688') {
+            selectors = [
+                "div[class='trade-info v-flex']",
+                ".sold-num", "[class*='h1']", "[class*='volume-']",
+                ".trade-info .hl", ".offer-sellAmount", "[id*='widget-sellcount']",
+                "div:has(span:contains('销量:'))",
+                "div:has(span:contains('成交'))", 
+                "div:has(span:contains('套成交'))" 
+            ];
+            salesPattern = /(\d+万\+?|\d+\+\s*[套个双]成交)/; 
+        } else {
+            selectors = [
+                "div[class*='salesDesc']", ".tm-count", ".sale-num", ".sell-count",
+                ".tm-ind-sellCount .tm-count", ".tb-detail-sell-count .tm-count"
+            ];
+            salesPattern = /(已售|销量|月销)\s*([\d.]+[万]+[\\+]?)/;
+        }
+
+        for (const selector of selectors) {
+
+            // 销量错误导致的 商品信息 按钮出现不了 ruanjl
+            try{
+
                 const element = document.querySelector(selector);
                 if (element) {
                     const salesText = element.innerText.trim();
@@ -591,32 +572,64 @@
                         if (platform === '1688') {
                             const match = salesText.match(salesPattern);
                             if (match && match[1]) {
-                                resolve(match[1].replace(/\s+/g, ' ').trim());
-                                return;
+                                return match[1].replace(/\s+/g, ' ').trim(); 
                             }
-                            resolve(salesText
+                            return salesText
                                 .replace(/(暂无评分|\d+\.\d+)\s*/, '') 
                                 .replace(/\d+\+?条评价\s*/, '')
                                 .replace(/一年内\s*/, '')
-                                .trim()
-                            );
-                            return;
+                                .trim();
                         } else {
                             const salesMatch = salesText.match(salesPattern);
-                            if (salesMatch && salesMatch[2]) {
-                                resolve(salesMatch[2]);
-                                return;
-                            }
-                            resolve(salesText);
-                            return;
+                            if (salesMatch && salesMatch[2]) return salesMatch[2];
+                            return salesText;
                         }
                     }
                 }
+
+            }catch(e){
+                console.log(e);
+                return "未知";
             }
-            resolve('未知');
-        }, 2000);
-    });
-};
+
+        }
+
+        return new Promise(resolve => {
+            setTimeout(() => {
+                for (const selector of selectors) {
+                    const element = document.querySelector(selector);
+                    if (element) {
+                        const salesText = element.innerText.trim();
+                        if (salesText) {
+                            if (platform === '1688') {
+                                const match = salesText.match(salesPattern);
+                                if (match && match[1]) {
+                                    resolve(match[1].replace(/\s+/g, ' ').trim());
+                                    return;
+                                }
+                                resolve(salesText
+                                    .replace(/(暂无评分|\d+\.\d+)\s*/, '') 
+                                    .replace(/\d+\+?条评价\s*/, '')
+                                    .replace(/一年内\s*/, '')
+                                    .trim()
+                                );
+                                return;
+                            } else {
+                                const salesMatch = salesText.match(salesPattern);
+                                if (salesMatch && salesMatch[2]) {
+                                    resolve(salesMatch[2]);
+                                    return;
+                                }
+                                resolve(salesText);
+                                return;
+                            }
+                        }
+                    }
+                }
+                resolve('未知');
+            }, 2000);
+        });
+    };
 
     const getShopName = (platform) => {
     let selectors;
@@ -632,6 +645,11 @@
         ];
     } else if (platform === '1688') {
         selectors = [
+            // ruanjl
+            "div[style*='margin: 30px'] span[title]", // 精确匹配你提供的结构
+            "div[style*='font-family'] span[title]",  // 备选匹配
+            "span[title]:not([class]):not([id])",     // 无class和id的span带有title属性
+
             "h1[title]",
             "a[class*='shop-company-name']",
         ];
@@ -665,25 +683,28 @@
                 }
             }
             resolve(null);
-        }, 2000);
+        
+        // }, 2000);
+        }, 4000);// ruanjl
+
     });
 
 
-        return new Promise(resolve => {
-            setTimeout(() => {
-                for (const selector of selectors) {
-                    const element = document.querySelector(selector);
-                    if (element) {
-                        const shopName = element.textContent.trim();
-                        if (shopName && shopName.length > 2) {
-                            resolve(shopName);
-                            return;
-                        }
-                    }
-                }
-                resolve(null);
-            }, 2000);
-        });
+        // return new Promise(resolve => {
+        //     setTimeout(() => {
+        //         for (const selector of selectors) {
+        //             const element = document.querySelector(selector);
+        //             if (element) {
+        //                 const shopName = element.textContent.trim();
+        //                 if (shopName && shopName.length > 2) {
+        //                     resolve(shopName);
+        //                     return;
+        //                 }
+        //             }
+        //         }
+        //         resolve(null);
+        //     }, 2000);
+        // });
     };
     const getAllProducts = () => {
         initStorages();
@@ -1093,27 +1114,29 @@
             }
         });
         panel.appendChild(viewBtn);
-        const certRecordBtn = document.createElement('button');
-        certRecordBtn.textContent = '查看公证记录';
-        certRecordBtn.style.cssText = `
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 3px;
-            cursor: pointer;
-            font-size: 13px;
-            text-align: left;
-        `;
-        certRecordBtn.addEventListener('click', () => {
-            const authState = checkAuthState();
-            if (authState.isAuthenticated) {
-                showCertificationRecords();
-            } else {
-                showToast('请先到官网完成用户登录认证', 'error', true);
-            }
-        });
-        panel.appendChild(certRecordBtn);
+        // 去掉 查看公证记录 按钮  ruanjl
+        // const certRecordBtn = document.createElement('button');
+        // certRecordBtn.textContent = '查看公证记录';
+        // certRecordBtn.style.cssText = `
+        //     background: #4CAF50;
+        //     color: white;
+        //     border: none;
+        //     padding: 8px 12px;
+        //     border-radius: 3px;
+        //     cursor: pointer;
+        //     font-size: 13px;
+        //     text-align: left;
+        // `;
+        // certRecordBtn.addEventListener('click', () => {
+        //     const authState = checkAuthState();
+        //     if (authState.isAuthenticated) {
+        //         showCertificationRecords();
+        //     } else {
+        //         showToast('请先到官网完成用户登录认证', 'error', true);
+        //     }
+        // });
+        // panel.appendChild(certRecordBtn);
+
         document.body.appendChild(panel);
         const adjustPanelPosition = () => {
             const rect = triggerBtn.getBoundingClientRect();
@@ -1741,7 +1764,11 @@
 
         // 认证状态判断
         const authState = checkAuthState();
-        const certBtnText = !authState.isAuthenticated ? '需先完成认证' : (isCertified ? '已申请公证' : '申请公证');
+
+        // ruanjl
+        // const certBtnText = !authState.isAuthenticated ? '需先完成认证' : (isCertified ? '已申请公证' : '申请公证');
+        const certBtnText = !authState.isAuthenticated ? '需先完成认证' : (isCertified ? '已保存' : '保存信息');
+
         const certBtnBg = !authState.isAuthenticated ? '#9E9E9E' : (isCertified ? '#9E9E9E' : '#2196F3');
         const certBtnDisabled = !authState.isAuthenticated || isCertified;
         const saveBtnDisabled = !authState.isAuthenticated;
@@ -1772,7 +1799,8 @@
             </p>
             <!-- 操作按钮横向排列（保持与表格操作列风格统一） -->
             <div class="action-btn-group" style="margin-top: 15px; width: 100%;">
-                <button id="saveProduct" style="
+                <!-- ruanjl -->
+                <!-- <button id="saveProduct" style="
                     flex: 1;
                     background: ${saveBtnBg};
                     color: white;
@@ -1782,7 +1810,7 @@
                     cursor: ${saveBtnDisabled ? 'not-allowed' : 'pointer'};
                     font-size: 13px;
                     opacity: ${saveBtnDisabled ? 0.7 : 1};
-                " ${saveBtnDisabled ? 'disabled' : ''}>${saveBtnText}</button>
+                " ${saveBtnDisabled ? 'disabled' : ''}>${saveBtnText}</button> -->
                 <button id="certifyProduct" style="
                     flex: 1;
                     background: ${certBtnBg};
@@ -1797,35 +1825,39 @@
             </div>
         `;
         document.body.appendChild(popup);
-        document.getElementById('saveProduct').addEventListener('click', () => {
-            const saveBtn = document.getElementById('saveProduct');
-            if (saveBtn.disabled) return;
+        // ruanjl
+        // document.getElementById('saveProduct').addEventListener('click', () => {
+        //     const saveBtn = document.getElementById('saveProduct');
+        //     if (saveBtn.disabled) return;
 
-            if (saveBtn.textContent.trim() === '已保存') {
-                showToast('该商品信息已保存，无需重复操作', 'info');
-                return;
-            }
+        //     if (saveBtn.textContent.trim() === '已保存') {
+        //         showToast('该商品信息已保存，无需重复操作', 'info');
+        //         return;
+        //     }
 
-            const productData = {
-                platform: platform,
-                shopName: shopName || '未知店铺',
-                productName: productName,
-                productUrl: productUrl,
-                salesCount: extraData.salesCount || '未知'
-            };
-            const result = saveProductInfo(productData);
-            if (result.success) {
-                saveBtn.textContent = '已保存';
-                saveBtn.style.background = '#9E9E9E';
-            }
-        });
+        //     const productData = {
+        //         platform: platform,
+        //         shopName: shopName || '未知店铺',
+        //         productName: productName,
+        //         productUrl: productUrl,
+        //         salesCount: extraData.salesCount || '未知'
+        //     };
+        //     const result = saveProductInfo(productData);
+        //     if (result.success) {
+        //         saveBtn.textContent = '已保存';
+        //         saveBtn.style.background = '#9E9E9E';
+        //     }
+        // });
 
         document.getElementById('certifyProduct').addEventListener('click', () => {
             const certBtn = document.getElementById('certifyProduct');
             if (certBtn.disabled) return;
 
-            if (certBtn.textContent.trim() === '已申请公证') {
-                showToast('该商品已完成公证，无需重复操作', 'info');
+            // if (certBtn.textContent.trim() === '已申请公证') { // ruanjl
+            //  showToast('该商品已完成公证，无需重复操作', 'info');
+            if (certBtn.textContent.trim() === '已保存') {
+                showToast('该商品保存，无需重复操作', 'info');
+                
                 return;
             }
 
@@ -1850,7 +1882,9 @@
             sendCertificationRequest(product)
                 .then(response => {
                     if (response.success) {
-                        certBtn.textContent = '已申请公证';
+                        // certBtn.textContent = '已申请公证'; // ruanjl
+                        certBtn.textContent = '已保存';
+
                         certBtn.style.background = '#9E9E9E';
                     } else if (response.isAuthError) {
                         popup.style.display = 'none';
